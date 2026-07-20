@@ -1,11 +1,29 @@
-# Full Stack AI Fianace Platform with Next JS, Supabase, Tailwind, Prisma, Inngest, ArcJet, Shadcn UI Tutorial 🔥🔥
-## https://youtu.be/egS6fnZAdzk
+# AI Finance Platform
 
-<img width="1470" alt="Screenshot 2024-12-10 at 9 45 45 AM" src="https://github.com/user-attachments/assets/1bc50b85-b421-4122-8ba4-ae68b2b61432">
+An AI-powered finance platform built with Next.js, Supabase, Tailwind, Prisma, Inngest, ArcJet, and Shadcn UI.
 
-### Make sure to create a `.env` file with following variables -
+## Overview
 
-```
+This platform integrates AI capabilities for financial insights, automated transactions, and personalized recommendations. Built with modern web technologies for a seamless user experience.
+
+## Tech Stack
+
+- Next.js 14 (App Router)
+- Supabase (Database & Auth)
+- Prisma ORM
+- Tailwind CSS
+- Shadcn UI
+- Clerk Authentication
+- Gemini AI
+- Inngest (Background Jobs)
+- ArcJet (Rate Limiting)
+- Resend (Email)
+
+## Setup
+
+Create a `.env` file with the following variables:
+
+```env
 DATABASE_URL=
 DIRECT_URL=
 
@@ -22,3 +40,18 @@ RESEND_API_KEY=
 
 ARCJET_KEY=
 ```
+
+## Installation
+
+```bash
+npm install
+npm run dev
+```
+
+## License
+
+Proprietary - All rights reserved.
+
+## Author
+
+Alakhdeep Singh
