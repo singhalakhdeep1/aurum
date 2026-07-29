@@ -1,13 +1,16 @@
 import { Suspense } from "react";
-import { getUserAccounts } from "@/actions/dashboard";
-import { getDashboardData } from "@/actions/dashboard";
-import { getCurrentBudget } from "@/actions/budget";
+import { getUserAccounts } from "@/features/dashboard/actions/dashboard";
+import { getDashboardData } from "@/features/dashboard/actions/dashboard";
+import { getCurrentBudget } from "@/features/budget/actions/budget";
 import { AccountCard } from "./_components/account-card";
-import { CreateAccountDrawer } from "@/components/create-account-drawer";
+import { CreateAccountDrawer } from "@/shared/components/account/create-account-drawer";
 import { BudgetProgress } from "./_components/budget-progress";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/ui/card";
 import { Plus } from "lucide-react";
 import { DashboardOverview } from "./_components/transaction-overview";
+import { QuickActions } from "./_components/quick-actions";
+import { RecentTransactions } from "./_components/recent-transactions";
+import { SubscriptionOverview } from "./_components/subscription-overview";
 
 export default async function DashboardPage() {
   const [accounts, transactions] = await Promise.all([
@@ -25,6 +28,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Quick Actions */}
+      <QuickActions />
+
       {/* Budget Progress */}
       <BudgetProgress
         initialBudget={budgetData?.budget}
@@ -36,6 +42,12 @@ export default async function DashboardPage() {
         accounts={accounts}
         transactions={transactions || []}
       />
+
+      {/* Recent Transactions */}
+      <RecentTransactions transactions={transactions || []} />
+
+      {/* Subscription Overview */}
+      <SubscriptionOverview />
 
       {/* Accounts Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
