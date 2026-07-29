@@ -1,0 +1,59 @@
+/**
+ * Environment Variables Configuration
+ * Type-safe environment variable access
+ */
+
+const env = {
+  // Database
+  DATABASE_URL: process.env.DATABASE_URL,
+  DIRECT_URL: process.env.DIRECT_URL,
+
+  // Clerk Auth
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL,
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL,
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL,
+
+  // AI Integration
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+
+  // Email Service
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+
+  // Security
+  ARCJET_KEY: process.env.ARCJET_KEY,
+
+  // Payment Gateways
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
+  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+  SQUARE_ACCESS_TOKEN: process.env.SQUARE_ACCESS_TOKEN,
+
+  // Crypto & Web3
+  NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+  INFURA_PROJECT_ID: process.env.INFURA_PROJECT_ID,
+  ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY,
+  RPC_URL: process.env.RPC_URL,
+
+  // DeFi Protocols
+  UNISWAP_V3_SUBGRAPH_URL: process.env.UNISWAP_V3_SUBGRAPH_URL,
+  AAVE_SUBGRAPH_URL: process.env.AAVE_SUBGRAPH_URL,
+
+  // Analytics
+  NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
+  AMPLITUDE_API_KEY: process.env.AMPLITUDE_API_KEY,
+
+  // Push Notifications
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+
+  // Plaid Bank Integration
+  PLAID_CLIENT_ID: process.env.PLAID_CLIENT_ID,
+  PLAID_SECRET: process.env.PLAID_SECRET,
+  PLAID_ENV: process.env.PLAID_ENV,
+} as const;
+
+export default env;
