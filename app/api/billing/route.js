@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
-});
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('Billing is not configured');
+  return new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
+}
 
 const PRICES = {
   starter: process.env.STRIPE_PRICE_STARTER,
@@ -30,9 +31,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Plan not configured' }, { status: 500 });
     }
 
-    // Check if user already has a subscription
-    // This would typically query your database
-    // For now, we'll create a new checkout session
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) return NextResponse.json({ error: 'Application URL is not configured' }, { status: 503 });
+    const stripe = getStripe();
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -43,13 +44,13 @@ export async function POST(req) {
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?subscription=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?subscription=canceled`,
-      customer_email: (await auth()).session?.user?.emailAddresses?.[0]?.emailAddress,
+      success_url: `${appUrl}/dashboard?subscription=success`,
+      cancel_url: `${appUrl}/dashboard?subscription=canceled`,
       metadata: {
         userId,
         plan,
       },
+      subscription_data: { metadata: { userId, plan } },
     });
 
     return NextResponse.json({ url: session.url });
@@ -69,13 +70,21 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // In a real implementation, you would query your database for the user's subscription
-    // For now, return a mock response
+    const stripe = getStripe();
+    const subscriptions = await stripe.subscriptions.list({ limit: 100, status: 'all' });
+    const subscription = subscriptions.data
+      .filter((item) => item.metadata.userId === userId)
+      .sort((a, b) => b.created - a.created)[0];
+    if (!subscription) return NextResponse.json({ subscription: null });
+
     return NextResponse.json({
-      plan: 'starter',
-      status: 'active',
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription: {
+        id: subscription.id,
+        plan: subscription.metadata.plan || null,
+        status: subscription.status,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+      },
     });
   } catch (error) {
     console.error('Get subscription error:', error);
@@ -93,15 +102,20 @@ export async function DELETE(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // In a real implementation, you would:
-    // 1. Get the user's subscription from your database
-    // 2. Call Stripe to cancel the subscription at period end
-    // 3. Update your database
-
-    // For now, return a mock response
+    const { subscriptionId } = await req.json();
+    if (typeof subscriptionId !== 'string' || !subscriptionId.startsWith('sub_')) {
+      return NextResponse.json({ error: 'A valid subscription ID is required' }, { status: 400 });
+    }
+    const stripe = getStripe();
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    if (subscription.metadata.userId !== userId) {
+      return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+    }
+    const updated = await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
     return NextResponse.json({
       success: true,
       message: 'Subscription will be canceled at the end of the current billing period',
+      subscription: { id: updated.id, cancelAtPeriodEnd: updated.cancel_at_period_end },
     });
   } catch (error) {
     console.error('Cancel subscription error:', error);

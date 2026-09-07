@@ -5,6 +5,8 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { prisma } from '@/shared/lib/db/prisma';
+import { UnauthorizedError } from './error-handler';
 
 export async function withAuth(handler: (req: Request, userId: string) => Promise<Response>) {
   return async (req: Request) => {
@@ -32,8 +34,10 @@ export async function requireAuth(req: Request): Promise<string> {
   const { userId } = await auth();
   
   if (!userId) {
-    throw new Error('Unauthorized');
+    throw new UnauthorizedError();
   }
-  
-  return userId;
+
+  const user = await prisma.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
+  if (!user) throw new UnauthorizedError('User profile not found');
+  return user.id;
 }

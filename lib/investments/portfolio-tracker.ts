@@ -11,6 +11,10 @@ export interface Investment {
   quantity: number;
   averageCost: number;
   currentPrice: number;
+  /** Most recent prior market close, supplied by the configured market-data provider. */
+  previousClose?: number;
+  /** Trailing annual dividend per unit, supplied by the provider or recorded by the user. */
+  annualDividendPerUnit?: number;
   currency: string;
   purchaseDate: Date;
   sector?: string;
@@ -37,9 +41,9 @@ export interface AssetAllocation {
 
 export interface PerformanceMetrics {
   daily: number;
-  weekly: number;
-  monthly: number;
-  quarterly: number;
+  weekly: number | null;
+  monthly: number | null;
+  quarterly: number | null;
   yearly: number;
   allTime: number;
 }
@@ -61,9 +65,12 @@ export function calculatePortfolio(investments: Investment[]): Portfolio {
   const totalGainLoss = totalValue - totalCost;
   const totalGainLossPercentage = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
   
-  // Mock day change - in production, fetch from API
-  const dayChange = totalValue * 0.01; // 1% change
-  const dayChangePercentage = 1;
+  const previousCloseValue = investments.reduce(
+    (sum, inv) => sum + inv.quantity * (inv.previousClose ?? inv.currentPrice),
+    0,
+  );
+  const dayChange = totalValue - previousCloseValue;
+  const dayChangePercentage = previousCloseValue > 0 ? (dayChange / previousCloseValue) * 100 : 0;
   
   return {
     investments,
@@ -207,17 +214,19 @@ export function generateInvestmentInsights(investments: Investment[]): Investmen
 }
 
 /**
- * Calculate performance metrics (mock - would use historical data in production)
+ * Calculate performance metrics from provider/database portfolio snapshots.
+ * Values without a snapshot are deliberately omitted rather than fabricated.
  */
-export function calculatePerformanceMetrics(investments: Investment[]): PerformanceMetrics {
+export function calculatePerformanceMetrics(
+  investments: Investment[],
+  snapshots: Partial<Pick<PerformanceMetrics, 'weekly' | 'monthly' | 'quarterly'>> = {},
+): PerformanceMetrics {
   const portfolio = calculatePortfolio(investments);
-  
-  // Mock performance data - in production, fetch from API
   return {
     daily: portfolio.dayChangePercentage,
-    weekly: 2.5,
-    monthly: 5.2,
-    quarterly: 8.1,
+    weekly: snapshots.weekly ?? null,
+    monthly: snapshots.monthly ?? null,
+    quarterly: snapshots.quarterly ?? null,
     yearly: portfolio.totalGainLossPercentage,
     allTime: portfolio.totalGainLossPercentage,
   };
@@ -252,15 +261,10 @@ export function getWorstPerformers(investments: Investment[], limit: number = 5)
 }
 
 /**
- * Calculate dividend income (mock - would use real dividend data)
+ * Calculate annual dividend income from recorded/provider-supplied dividend data.
  */
 export function calculateDividendIncome(investments: Investment[]): number {
-  // Mock calculation - in production, fetch actual dividend yields
-  return investments.reduce((sum, inv) => {
-    const value = inv.quantity * inv.currentPrice;
-    const dividendYield = inv.type === 'stock' ? 0.02 : inv.type === 'etf' ? 0.015 : 0;
-    return sum + (value * dividendYield);
-  }, 0);
+  return investments.reduce((sum, inv) => sum + inv.quantity * (inv.annualDividendPerUnit ?? 0), 0);
 }
 
 /**

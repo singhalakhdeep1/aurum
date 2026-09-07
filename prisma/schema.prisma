@@ -17,6 +17,8 @@ model User {
   transactions  Transaction[]
   accounts      Account[]
   budgets       Budget[]
+  investments   Investment[]
+  subscriptions Subscription[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -99,4 +101,79 @@ enum RecurringInterval {
   WEEKLY
   MONTHLY
   YEARLY
+}
+
+enum InvestmentType {
+  stock
+  etf
+  mutual_fund
+  bond
+  crypto
+  real_estate
+  other
+}
+
+enum BillingCycle {
+  daily
+  weekly
+  monthly
+  quarterly
+  yearly
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  cancelled
+  expired
+}
+
+model Investment {
+  id                    String         @id @default(uuid())
+  symbol                String
+  name                  String
+  type                  InvestmentType
+  quantity              Decimal
+  averageCost           Decimal
+  currentPrice          Decimal
+  previousClose         Decimal?
+  annualDividendPerUnit Decimal?
+  currency              String         @default("USD")
+  purchaseDate          DateTime
+  sector                String?
+  exchange              String?
+  notes                 String?
+  userId                String
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([userId, symbol])
+  @@map("investments")
+}
+
+model Subscription {
+  id              String             @id @default(uuid())
+  name            String
+  description     String?
+  amount          Decimal
+  currency        String             @default("USD")
+  billingCycle    BillingCycle
+  nextBillingDate DateTime
+  category        String
+  status          SubscriptionStatus @default(active)
+  autoRenew       Boolean            @default(true)
+  freeTrialEnd    DateTime?
+  logo            String?
+  website         String?
+  notes           String?
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([userId, nextBillingDate])
+  @@map("subscriptions")
 }

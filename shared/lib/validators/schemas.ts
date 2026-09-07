@@ -50,6 +50,8 @@ export const createInvestmentSchema = z.object({
   quantity: z.number().positive('Quantity must be positive'),
   averageCost: z.number().positive('Average cost must be positive'),
   currentPrice: z.number().positive('Current price must be positive'),
+  previousClose: z.number().positive('Previous close must be positive').optional(),
+  annualDividendPerUnit: z.number().min(0, 'Dividend cannot be negative').optional(),
   currency: z.string().default('USD'),
   purchaseDate: z.string().or(z.date()),
   sector: z.string().optional(),
