@@ -12,11 +12,11 @@ import { updateSubscriptionSchema } from '@/shared/lib/validators/schemas';
 // GET /api/subscriptions/[id] - Get subscription by ID
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     const subscription = await prisma.subscription.findFirst({
       where: { id, userId },
@@ -35,11 +35,11 @@ export async function GET(
 // PUT /api/subscriptions/[id] - Update subscription
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     
     const validatedData = updateSubscriptionSchema.parse(body);
@@ -71,11 +71,11 @@ export async function PUT(
 // DELETE /api/subscriptions/[id] - Delete subscription
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     // Check if subscription exists and belongs to user
     const existingSubscription = await prisma.subscription.findFirst({
@@ -92,39 +92,6 @@ export async function DELETE(
     });
     
     return NextResponse.json({ message: 'Subscription deleted successfully' });
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
-
-// POST /api/subscriptions/[id]/cancel - Cancel subscription
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const userId = await requireAuth(req);
-    const { id } = params;
-    
-    // Check if subscription exists and belongs to user
-    const existingSubscription = await prisma.subscription.findFirst({
-      where: { id, userId },
-    });
-    
-    if (!existingSubscription) {
-      throw new NotFoundError('Subscription');
-    }
-    
-    // Cancel subscription
-    const subscription = await prisma.subscription.update({
-      where: { id },
-      data: {
-        status: 'cancelled',
-        autoRenew: false,
-      },
-    });
-    
-    return NextResponse.json(subscription);
   } catch (error) {
     return handleApiError(error);
   }

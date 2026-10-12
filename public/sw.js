@@ -1,60 +1,36 @@
-const CACHE_NAME = 'aurum-v1';
-const urlsToCache = [
-  '/',
-  '/dashboard',
-  '/manifest.json',
-];
+// Aurum service worker.
+// It only handles web push; it deliberately does not cache pages or API
+// responses, because they contain signed-in, per-user financial data.
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : '' };
+  }
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
-  );
-});
-
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response;
-      }
-      return fetch(event.request);
+    self.registration.showNotification(payload.title || 'Aurum', {
+      body: payload.body || 'You have a new notification',
+      icon: '/logo-sm.png',
+      badge: '/logo-sm.png',
+      data: { url: payload.url || '/dashboard' },
     })
   );
 });
 
-// Push notification handler
-self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data?.text() || 'New notification',
-    icon: '/logo-sm.png',
-    badge: '/logo-sm.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1,
-    },
-    actions: [
-      {
-        action: 'explore',
-        title: 'Explore',
-        icon: '/logo-sm.png',
-      },
-      {
-        action: 'close',
-        title: 'Close',
-        icon: '/logo-sm.png',
-      },
-    ],
-  };
-
-  event.waitUntil(self.registration.showNotification('Aurum', options));
-});
-
-// Notification click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/dashboard';
 
-  if (event.action === 'explore') {
-    event.waitUntil(clients.openWindow('/dashboard'));
-  }
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => new URL(w.url).pathname === url && 'focus' in w);
+      return open ? open.focus() : self.clients.openWindow(url);
+    })
+  );
 });

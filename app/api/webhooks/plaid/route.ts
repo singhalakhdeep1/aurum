@@ -1,48 +1,28 @@
 /**
- * Plaid Webhook Handler
- * Handles Plaid bank feed events
+ * Plaid webhook: verifies the signature, then imports new transactions
+ * whenever Plaid reports updates for an item.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { handleApiError } from '@/shared/lib/middleware/error-handler';
+import { verifyWebhook } from '@/shared/lib/bank/plaid';
+import { syncBankItem } from '@/shared/lib/bank/sync';
 
 export async function POST(req: NextRequest) {
+  const rawBody = await req.text();
+
+  if (!(await verifyWebhook(rawBody, req.headers.get('plaid-verification')))) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
   try {
-    const body = await req.json();
-    const webhookType = body.webhook_type;
-    const webhookCode = body.webhook_code;
-    
-    // Verify webhook signature
-    // const { verifyWebhookSignature } = await import('@/shared/lib/bank/plaid');
-    // const isValid = await verifyWebhookSignature(body);
-    // if (!isValid) {
-    //   return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    // }
-    
-    // Handle different webhook types
-    switch (webhookType) {
-      case 'TRANSACTIONS':
-        // Handle transaction updates
-        break;
-      case 'AUTH':
-        // Handle authentication updates
-        break;
-      case 'ITEM':
-        // Handle item updates (login required, etc.)
-        if (webhookCode === 'LOGIN_REQUIRED') {
-          // Notify user to re-link their account
-        }
-        break;
-      case 'ERROR':
-        // Handle errors
-        console.error('Plaid webhook error:', body.error);
-        break;
-      default:
-        console.log(`Unhandled Plaid webhook type: ${webhookType}`);
+    const body = JSON.parse(rawBody);
+    if (body.webhook_type === 'TRANSACTIONS' && body.webhook_code === 'SYNC_UPDATES_AVAILABLE' && body.item_id) {
+      await syncBankItem(body.item_id);
     }
-    
     return NextResponse.json({ received: true });
   } catch (error) {
-    return handleApiError(error);
+    console.error('Plaid webhook processing failed:', error);
+    // 500 makes Plaid retry the delivery
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }

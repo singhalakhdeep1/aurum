@@ -1,77 +1,76 @@
 /**
  * Settings Page
- * User account and application settings
+ * Notification preferences (saved to the server, honoured by the email and push
+ * jobs) and appearance. Account security is managed through Clerk.
  */
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/ui/card';
-import { Button } from '@/shared/components/ui/ui/button';
-import { Switch } from '@/shared/components/ui/ui/switch';
-import { Input } from '@/shared/components/ui/ui/input';
-import { Label } from '@/shared/components/ui/ui/label';
-import { User, Bell, Shield, Globe, CreditCard, Palette, Loader2 } from 'lucide-react';
-import { UserButton } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
+import { UserButton } from '@clerk/nextjs';
+import { Bell, Loader2, Moon, Palette, Shield, Sun, Monitor, User } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface UserSettings {
   pushNotifications: boolean;
   emailNotifications: boolean;
   budgetAlerts: boolean;
-  biometricAuth: boolean;
-  language: string;
-  currency: string;
-  darkMode: boolean;
 }
 
-interface PaymentMethod {
-  id: string;
-  type: string;
-  lastFour: string;
-  expiryDate: string;
-}
+const TOGGLES: { key: keyof UserSettings; label: string; description: string }[] = [
+  { key: 'pushNotifications', label: 'Push Notifications', description: 'Browser notifications for budget alerts. Use the bell in the header to enable them on this device.' },
+  { key: 'emailNotifications', label: 'Email Notifications', description: 'Budget alerts and your monthly financial report by email.' },
+  { key: 'budgetAlerts', label: 'Budget Alerts', description: 'Get notified when you pass 80% of your monthly budget.' },
+];
+
+const THEMES = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+] as const;
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    async function fetchSettings() {
+    setMounted(true);
+    async function load() {
       try {
-        const [settingsRes, paymentRes] = await Promise.all([
-          fetch('/api/user/settings'),
-          fetch('/api/user/payment-methods'),
-        ]);
-
-        if (!settingsRes.ok) throw new Error('Failed to fetch settings');
-        if (!paymentRes.ok) throw new Error('Failed to fetch payment methods');
-
-        const settingsData = await settingsRes.json();
-        const paymentData = await paymentRes.json();
-
-        setSettings(settingsData);
-        setPaymentMethods(paymentData);
+        const res = await fetch('/api/user/settings');
+        if (!res.ok) throw new Error('Failed to load settings');
+        setSettings(await res.json());
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load settings');
-      } finally {
-        setLoading(false);
       }
     }
-
-    fetchSettings();
+    load();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        </div>
-      </div>
-    );
-  }
+  const update = async (key: keyof UserSettings, value: boolean) => {
+    if (!settings) return;
+    const previous = settings;
+    setSettings({ ...settings, [key]: value });
+    try {
+      const res = await fetch('/api/user/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      toast.success('Settings saved');
+    } catch {
+      setSettings(previous);
+      toast.error('Could not save your change');
+    }
+  };
 
   if (error) {
     return (
@@ -86,242 +85,91 @@ export default function SettingsPage() {
     );
   }
 
+  if (!settings) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[300px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Manage your account and preferences
-        </p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your account and preferences</p>
       </div>
 
-      <div className="space-y-6">
-        {/* Profile Section */}
+      <div className="space-y-6 max-w-3xl">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Profile
+              Account
             </CardTitle>
-            <CardDescription>
-              Manage your account information
-            </CardDescription>
+            <CardDescription>Name, email and sign-in methods are managed in your account menu</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                <UserButton />
-              </div>
-              <div>
-                <h3 className="font-medium">Account</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Manage your Clerk account
-                </p>
-              </div>
-            </div>
+          <CardContent className="flex items-center gap-4">
+            <UserButton />
+            <p className="text-sm text-gray-600 dark:text-gray-400">Click your avatar and choose &ldquo;Manage account&rdquo;.</p>
           </CardContent>
         </Card>
 
-        {/* Notifications Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
               Notifications
             </CardTitle>
-            <CardDescription>
-              Configure your notification preferences
-            </CardDescription>
+            <CardDescription>Changes are saved automatically</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="push-notifications">Push Notifications</Label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Receive push notifications for transactions and updates
-                </p>
+          <CardContent className="space-y-5">
+            {TOGGLES.map(({ key, label, description }) => (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor={key}>{label}</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+                </div>
+                <Switch id={key} checked={settings[key]} onCheckedChange={(checked: boolean) => update(key, checked)} />
               </div>
-              <Switch 
-                id="push-notifications" 
-                checked={settings?.pushNotifications}
-                onCheckedChange={(checked) => setSettings(prev => prev ? {...prev, pushNotifications: checked} : null)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="email-notifications">Email Notifications</Label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Receive email notifications for important events
-                </p>
-              </div>
-              <Switch 
-                id="email-notifications" 
-                checked={settings?.emailNotifications}
-                onCheckedChange={(checked) => setSettings(prev => prev ? {...prev, emailNotifications: checked} : null)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="budget-alerts">Budget Alerts</Label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Get notified when you're approaching budget limits
-                </p>
-              </div>
-              <Switch 
-                id="budget-alerts" 
-                checked={settings?.budgetAlerts}
-                onCheckedChange={(checked) => setSettings(prev => prev ? {...prev, budgetAlerts: checked} : null)}
-              />
-            </div>
+            ))}
           </CardContent>
         </Card>
 
-        {/* Security Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
               Security
             </CardTitle>
-            <CardDescription>
-              Manage your security settings
-            </CardDescription>
+            <CardDescription>Two-factor authentication and active sessions</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="biometric-auth">Biometric Authentication</Label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Use fingerprint or Face ID for quick login
-                </p>
-              </div>
-              <Switch 
-                id="biometric-auth" 
-                checked={settings?.biometricAuth}
-                onCheckedChange={(checked) => setSettings(prev => prev ? {...prev, biometricAuth: checked} : null)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="two-factor">Two-Factor Authentication</Label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Add an extra layer of security to your account
-                </p>
-              </div>
-              <Button variant="outline" size="sm">
-                Enable
-              </Button>
-            </div>
+          <CardContent className="text-sm text-gray-600 dark:text-gray-400">
+            Security options such as two-factor authentication are available under <strong>Manage account &rarr; Security</strong> in your account menu above.
           </CardContent>
         </Card>
 
-        {/* Language Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Language & Region
-            </CardTitle>
-            <CardDescription>
-              Set your language and regional preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="language">Language</Label>
-              <select
-                id="language"
-                value={settings?.language || 'en'}
-                onChange={(e) => setSettings(prev => prev ? {...prev, language: e.target.value} : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-700"
-              >
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-                <option value="zh">Chinese</option>
-                <option value="ja">Japanese</option>
-                <option value="ko">Korean</option>
-                <option value="hi">Hindi</option>
-                <option value="ar">Arabic</option>
-                <option value="pt">Portuguese</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <select
-                id="currency"
-                value={settings?.currency || 'USD'}
-                onChange={(e) => setSettings(prev => prev ? {...prev, currency: e.target.value} : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-700"
-              >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="JPY">JPY</option>
-                <option value="INR">INR</option>
-              </select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payment Methods Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Payment Methods
-            </CardTitle>
-            <CardDescription>
-              Manage your payment methods for subscriptions
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {paymentMethods.length === 0 ? (
-              <p className="text-sm text-gray-600 dark:text-gray-400">No payment methods added</p>
-            ) : (
-              paymentMethods.map((method) => (
-                <div key={method.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{method.type} ending in {method.lastFour}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Expires {method.expiryDate}</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Remove
-                  </Button>
-                </div>
-              ))
-            )}
-            <Button variant="outline" className="w-full">
-              Add Payment Method
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Appearance Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
               Appearance
             </CardTitle>
-            <CardDescription>
-              Customize the look and feel
-            </CardDescription>
+            <CardDescription>Choose how Aurum looks on this device</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="dark-mode">Dark Mode</Label>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Switch between light and dark themes
-                </p>
-              </div>
-              <Switch 
-                id="dark-mode" 
-                checked={settings?.darkMode}
-                onCheckedChange={(checked) => setSettings(prev => prev ? {...prev, darkMode: checked} : null)}
-              />
+          <CardContent>
+            <div className="flex gap-2">
+              {THEMES.map(({ value, label, icon: Icon }) => (
+                <Button
+                  key={value}
+                  variant={mounted && theme === value ? 'default' : 'outline'}
+                  onClick={() => setTheme(value)}
+                  className="flex-1"
+                >
+                  <Icon className="mr-2 h-4 w-4" />
+                  {label}
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>

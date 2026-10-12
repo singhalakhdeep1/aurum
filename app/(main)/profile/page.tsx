@@ -1,22 +1,27 @@
 /**
  * Profile Page
- * View and edit user profile information
+ * Display name, level / XP and achievements, all derived from real activity.
  */
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/ui/card';
-import { Button } from '@/shared/components/ui/ui/button';
-import { Input } from '@/shared/components/ui/ui/input';
-import { Label } from '@/shared/components/ui/ui/label';
-import { User, Mail, Calendar, Award, Target, Trophy, Loader2, AlertCircle } from 'lucide-react';
-import { UserButton, useUser } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { UserButton } from '@clerk/nextjs';
+import { AlertCircle, Award, Loader2, Target, Trophy } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 
 interface Achievement {
   id: string;
   name: string;
+  description: string;
   icon: string;
+  progress: number;
+  maxProgress: number;
   unlocked: boolean;
 }
 
@@ -32,57 +37,62 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, isLoaded: userLoaded } = useUser();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    async function fetchProfile() {
-      if (!userLoaded) return;
-      
+    async function load() {
       try {
-        const response = await fetch('/api/user/profile');
-        if (!response.ok) throw new Error('Failed to fetch profile');
-        const data = await response.json();
+        const res = await fetch('/api/user/profile');
+        if (!res.ok) throw new Error('Failed to load profile');
+        const data: UserProfile = await res.json();
         setProfile(data);
+        setName(data.name);
       } catch (err) {
-        // If API fails, use Clerk data as fallback
-        setProfile({
-          name: user?.fullName || 'User',
-          email: user?.primaryEmailAddress?.emailAddress || '',
-          imageUrl: user?.imageUrl || null,
-          memberSince: user?.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
-          level: 1,
-          xp: 0,
-          nextLevelXp: 100,
-          achievements: [],
-        });
+        setError(err instanceof Error ? err.message : 'Failed to load profile');
       } finally {
         setLoading(false);
       }
     }
+    load();
+  }, []);
 
-    fetchProfile();
-  }, [user, userLoaded]);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save');
+      setProfile(await res.json());
+      toast.success('Profile updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  if (loading || !userLoaded) {
+  if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        </div>
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[300px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
   }
 
-  if (error) {
+  if (error || !profile) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card className="border-red-200 dark:border-red-800">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Error loading profile</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{error}</p>
             <Button onClick={() => window.location.reload()}>Retry</Button>
           </CardContent>
@@ -91,80 +101,70 @@ export default function ProfilePage() {
     );
   }
 
-  const user = profile || {
-    name: user?.fullName || 'User',
-    email: user?.primaryEmailAddress?.emailAddress || '',
-    imageUrl: user?.imageUrl || null,
-    memberSince: user?.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
-    level: 1,
-    xp: 0,
-    nextLevelXp: 100,
-    achievements: [],
-  };
-
-  const xpProgress = (user.xp / user.nextLevelXp) * 100;
+  const xpProgress = Math.min(100, (profile.xp / profile.nextLevelXp) * 100);
+  const unlocked = profile.achievements.filter((a) => a.unlocked).length;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Profile</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          View and manage your profile
-        </p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Your progress and account details</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Card */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Your account information</CardDescription>
+              <div className="flex items-center gap-4">
+                <UserButton />
+                <div className="min-w-0">
+                  <CardTitle className="truncate">{profile.name || 'Your account'}</CardTitle>
+                  <CardDescription className="truncate">{profile.email}</CardDescription>
+                  <p className="text-xs text-gray-500 mt-1">Member since {new Date(profile.memberSince).toLocaleDateString()}</p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col items-center space-y-4">
-                <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <UserButton />
-                </div>
-                <div className="text-center">
-                  <h3 className="font-medium text-lg">{user.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    Member since {new Date(user.memberSince).toLocaleDateString()}
-                  </p>
-                </div>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 font-medium">
+                  <Trophy className="h-4 w-4 text-yellow-500" />
+                  Level {profile.level}
+                </span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  {profile.xp} / {profile.nextLevelXp} XP
+                </span>
               </div>
-              
-              <div className="space-y-2 pt-4 border-t">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-gray-500" />
-                  <span className="text-gray-600 dark:text-gray-400">Level {user.level}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Trophy className="h-4 w-4 text-gray-500" />
-                  <span className="text-gray-600 dark:text-gray-400">{user.xp} XP</span>
-                </div>
-              </div>
+              <Progress value={xpProgress} extraStyles="bg-yellow-500" />
+              <p className="text-xs text-gray-500">
+                Earn XP by recording transactions, creating accounts, setting a budget, tracking investments and subscriptions, and scanning receipts.
+              </p>
+            </CardContent>
+          </Card>
 
-              <div className="pt-4 border-t">
-                <div className="flex justify-between text-sm mb-2">
-                  <span>XP Progress</span>
-                  <span>{user.xp} / {user.nextLevelXp}</span>
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Profile</CardTitle>
+              <CardDescription>Update how your name appears in Aurum</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={save} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input id="name" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} maxLength={100} required />
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full transition-all"
-                    style={{ width: `${xpProgress}%` }}
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" value={profile.email} disabled />
                 </div>
-              </div>
+                <Button type="submit" className="w-full" disabled={saving || !name.trim() || name.trim() === profile.name}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>
 
-        {/* Achievements & Stats */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Achievements */}
+        <div className="lg:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -172,85 +172,36 @@ export default function ProfilePage() {
                 Achievements
               </CardTitle>
               <CardDescription>
-                Your accomplishments and milestones
+                {unlocked} of {profile.achievements.length} unlocked
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {user.achievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className={`p-4 rounded-lg border ${
-                      achievement.unlocked
-                        ? 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800'
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-50'
-                    }`}
-                  >
-                    <div className="text-3xl mb-2">{achievement.icon}</div>
-                    <h4 className="font-medium text-sm">{achievement.name}</h4>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      {achievement.unlocked ? 'Unlocked' : 'Locked'}
-                    </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {profile.achievements.map((a) => (
+                  <div key={a.id} className={`rounded-lg border p-4 ${a.unlocked ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-300 dark:border-yellow-800' : ''}`}>
+                    <div className="flex items-start gap-3">
+                      <span className={`text-2xl ${a.unlocked ? '' : 'grayscale opacity-60'}`} aria-hidden>
+                        {a.icon}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium flex items-center gap-2">
+                          {a.name}
+                          {a.unlocked && <Target className="h-4 w-4 text-green-500" aria-label="Unlocked" />}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{a.description}</p>
+                        {!a.unlocked && (
+                          <div className="mt-2 space-y-1">
+                            <Progress value={(a.progress / a.maxProgress) * 100} />
+                            <p className="text-xs text-gray-500">
+                              {Math.floor(a.progress).toLocaleString()} / {a.maxProgress.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Quick Stats
-              </CardTitle>
-              <CardDescription>
-                Your financial overview
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">12</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Accounts</p>
-                </div>
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">156</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Transactions</p>
-                </div>
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">8</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Budgets</p>
-                </div>
-                <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">5</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Subscriptions</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Edit Profile Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Edit Profile</CardTitle>
-              <CardDescription>
-                Update your profile information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" defaultValue={user.name} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" defaultValue={user.email} disabled />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Email cannot be changed. Manage via Clerk.
-                </p>
-              </div>
-              <Button className="w-full">Save Changes</Button>
             </CardContent>
           </Card>
         </div>

@@ -235,22 +235,6 @@ export function generateSubscriptionInsights(subscriptions: Subscription[]): Sub
     }
   });
   
-  // Check for potentially unused subscriptions (no recent activity - would need transaction data)
-  // This is a placeholder - in production, you'd check actual usage
-  const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-  
-  activeSubscriptions.forEach(sub => {
-    if (sub.createdAt < threeMonthsAgo && !sub.notes) {
-      insights.push({
-        type: 'unused',
-        message: `${sub.name} has been active for over 3 months. Review if still needed.`,
-        subscriptionId: sub.id,
-        severity: 'low',
-        action: 'Review usage and consider cancelling if not needed',
-      });
-    }
-  });
-  
   return insights;
 }
 

@@ -12,11 +12,11 @@ import { updateInvestmentSchema } from '@/shared/lib/validators/schemas';
 // GET /api/investments/[id] - Get investment by ID
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     const investment = await prisma.investment.findFirst({
       where: { id, userId },
@@ -35,11 +35,11 @@ export async function GET(
 // PUT /api/investments/[id] - Update investment
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     
     const validatedData = updateInvestmentSchema.parse(body);
@@ -70,11 +70,11 @@ export async function PUT(
 // DELETE /api/investments/[id] - Delete investment
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     // Check if investment exists and belongs to user
     const existingInvestment = await prisma.investment.findFirst({

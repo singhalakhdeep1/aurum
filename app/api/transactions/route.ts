@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/shared/lib/db/prisma';
 import { requireAuth } from '@/shared/lib/middleware/auth';
-import { handleApiError } from '@/shared/lib/middleware/error-handler';
+import { handleApiError, NotFoundError } from '@/shared/lib/middleware/error-handler';
 import { createTransactionSchema, paginationSchema } from '@/shared/lib/validators/schemas';
 
 // GET /api/transactions - Get all transactions for authenticated user
@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
     
     const { searchParams } = new URL(req.url);
     const { page, pageSize } = paginationSchema.parse({
-      page: searchParams.get('page'),
-      pageSize: searchParams.get('pageSize'),
+      page: searchParams.get('page') ?? undefined,
+      pageSize: searchParams.get('pageSize') ?? undefined,
     });
     
     const accountId = searchParams.get('accountId');
@@ -67,7 +67,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     
     const validatedData = createTransactionSchema.parse(body);
-    
+
+    const account = await prisma.account.findFirst({ where: { id: validatedData.accountId, userId } });
+    if (!account) throw new NotFoundError('Account');
+
     const transaction = await prisma.$transaction(async (tx) => {
       // Create transaction
       const newTransaction = await tx.transaction.create({

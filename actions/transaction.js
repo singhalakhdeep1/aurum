@@ -228,8 +228,33 @@ export async function getUserTransactions(query = {}) {
 }
 
 // Scan Receipt
+const RECEIPT_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
+
+// Scan a receipt image with Gemini and log the attempt for the receipts page
 export async function scanReceipt(file) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const user = await db.user.findUnique({ where: { clerkUserId: userId } });
+  if (!user) throw new Error("User not found");
+
+  const record = (data) =>
+    db.receipt.create({ data: { userId: user.id, ...data } }).catch((e) => {
+      console.error("Failed to record receipt scan:", e);
+    });
+
   try {
+    if (!file || !RECEIPT_TYPES.includes(file.type)) {
+      throw new Error("Please upload a JPEG, PNG or WebP image");
+    }
+    if (file.size > MAX_RECEIPT_BYTES) {
+      throw new Error("Receipt image must be smaller than 5MB");
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("Receipt scanning is not configured");
+    }
+
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // Convert File to ArrayBuffer
@@ -271,22 +296,41 @@ export async function scanReceipt(file) {
     const text = response.text();
     const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
 
+    let data;
     try {
-      const data = JSON.parse(cleanedText);
-      return {
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        description: data.description,
-        category: data.category,
-        merchantName: data.merchantName,
-      };
+      data = JSON.parse(cleanedText);
     } catch (parseError) {
       console.error("Error parsing JSON response:", parseError);
-      throw new Error("Invalid response format from Gemini");
+      throw new Error("Could not read this receipt");
     }
+
+    const amount = parseFloat(data.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("This does not look like a receipt");
+    }
+
+    const date = new Date(data.date);
+    const parsed = {
+      amount,
+      date: Number.isNaN(date.getTime()) ? new Date() : date,
+      description: data.description,
+      category: data.category,
+      merchantName: data.merchantName,
+    };
+
+    await record({
+      merchant: parsed.merchantName || null,
+      amount: parsed.amount,
+      date: parsed.date,
+      category: parsed.category || null,
+      status: "success",
+    });
+
+    return parsed;
   } catch (error) {
     console.error("Error scanning receipt:", error);
-    throw new Error("Failed to scan receipt");
+    await record({ status: "failed", error: error.message });
+    throw new Error(error.message || "Failed to scan receipt");
   }
 }
 

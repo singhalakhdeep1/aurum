@@ -1,14 +1,16 @@
 /**
  * Bank Feed Linking Page
- * Link bank accounts using Plaid for automatic transaction import
+ * Link bank accounts with Plaid and import their transactions automatically.
  */
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/ui/card';
-import { Button } from '@/shared/components/ui/ui/button';
-import { Link, CheckCircle, AlertCircle, RefreshCw, Shield, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { usePlaidLink } from 'react-plaid-link';
+import { toast } from 'sonner';
+import { CheckCircle, Link as LinkIcon, Loader2, RefreshCw, Shield } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface LinkedAccount {
   id: string;
@@ -17,30 +19,106 @@ interface LinkedAccount {
   accountNumber: string;
   balance: number;
   status: string;
-  lastSync: string;
+  lastSync: string | null;
+}
+
+async function api<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || 'Request failed');
+  return body as T;
 }
 
 export default function BankPage() {
-  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
+  const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setAccounts(await api<LinkedAccount[]>('/api/bank/accounts'));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load linked accounts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchLinkedAccounts() {
-      try {
-        const response = await fetch('/api/bank/accounts');
-        if (!response.ok) throw new Error('Failed to fetch linked accounts');
-        const data = await response.json();
-        setLinkedAccounts(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load linked accounts');
-      } finally {
-        setLoading(false);
-      }
-    }
+    load();
+  }, [load]);
 
-    fetchLinkedAccounts();
-  }, []);
+  const { open, ready } = usePlaidLink({
+    token: linkToken,
+    onSuccess: async (publicToken, metadata) => {
+      try {
+        const result = await api<{ linked: number; imported: number }>('/api/bank/exchange', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicToken, institutionName: metadata.institution?.name }),
+        });
+        toast.success(`Linked ${result.linked} account(s), imported ${result.imported} transactions`);
+        await load();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to link account');
+      } finally {
+        setLinkToken(null);
+      }
+    },
+    onExit: () => setLinkToken(null),
+  });
+
+  // Open Plaid Link as soon as a fresh token has been loaded
+  useEffect(() => {
+    if (linkToken && ready) open();
+  }, [linkToken, ready, open]);
+
+  const startLinking = async () => {
+    setStarting(true);
+    try {
+      const { linkToken } = await api<{ linkToken: string }>('/api/bank/link-token', { method: 'POST' });
+      setLinkToken(linkToken);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not start bank linking');
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const sync = async (id: string) => {
+    setBusyId(id);
+    try {
+      const result = await api<{ added: number }>('/api/bank/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      toast.success(result.added ? `Imported ${result.added} new transactions` : 'Already up to date');
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Sync failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const unlink = async (account: LinkedAccount) => {
+    if (!confirm(`Unlink ${account.bankName} - ${account.accountName}? Imported transactions are kept.`)) return;
+    setBusyId(account.id);
+    try {
+      await api(`/api/bank/accounts/${account.id}`, { method: 'DELETE' });
+      toast.success('Account unlinked');
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to unlink account');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -52,18 +130,19 @@ export default function BankPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Link New Account */}
         <div className="lg:col-span-1">
           <Card>
             <CardHeader>
               <CardTitle>Link New Account</CardTitle>
-              <CardDescription>
-                Connect a new bank account
-              </CardDescription>
+              <CardDescription>Connect a bank account securely through Plaid</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button className="w-full h-24 flex flex-col items-center justify-center gap-2 text-lg">
-                <Link className="h-8 w-8" />
+              <Button
+                className="w-full h-24 flex flex-col items-center justify-center gap-2 text-lg"
+                onClick={startLinking}
+                disabled={starting || Boolean(linkToken)}
+              >
+                {starting ? <Loader2 className="h-8 w-8 animate-spin" /> : <LinkIcon className="h-8 w-8" />}
                 Link Bank Account
               </Button>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -71,38 +150,19 @@ export default function BankPage() {
                 <span>Secure connection via Plaid</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Your credentials are encrypted and never stored on our servers.
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Supported Banks */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Supported Banks</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-2">
-                {['Chase', 'Bank of America', 'Wells Fargo', 'Citi', 'US Bank', 'Capital One'].map((bank) => (
-                  <div key={bank} className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
-                    {bank}
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                And 10,000+ more institutions
+                Your bank credentials go directly to Plaid and are never seen or stored by Aurum.
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Linked Accounts */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Linked Accounts</CardTitle>
               <CardDescription>
-                Your connected bank accounts
+                Each linked account also appears in your accounts list, and new transactions are imported
+                automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -111,20 +171,16 @@ export default function BankPage() {
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 </div>
               ) : error ? (
-                <div className="text-center py-8 text-sm text-gray-600 dark:text-gray-400">
-                  {error}
-                </div>
-              ) : linkedAccounts.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <p>No linked accounts</p>
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Link Your First Account
-                  </Button>
-                </div>
+                <div className="text-center py-8 text-sm text-gray-600 dark:text-gray-400">{error}</div>
+              ) : accounts.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">No linked accounts yet</div>
               ) : (
                 <div className="space-y-4">
-                  {linkedAccounts.map((account) => (
-                    <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {accounts.map((account) => (
+                    <div
+                      key={account.id}
+                      className="flex flex-col gap-4 p-4 border rounded-lg sm:flex-row sm:items-center sm:justify-between"
+                    >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                           <CheckCircle className="h-6 w-6 text-blue-500" />
@@ -134,19 +190,25 @@ export default function BankPage() {
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             {account.accountName} • {account.accountNumber}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            Last synced: {new Date(account.lastSync).toLocaleString()}
+                          <p className="text-xs text-gray-500 mt-1">
+                            {account.lastSync ? `Last synced: ${new Date(account.lastSync).toLocaleString()}` : 'Not synced yet'}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">${account.balance.toLocaleString()}</p>
-                        <div className="flex gap-2 mt-2">
-                          <Button variant="outline" size="sm">
-                            <RefreshCw className="h-4 w-4 mr-1" />
+                      <div className="sm:text-right">
+                        <p className="text-lg font-bold">
+                          ${account.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <div className="flex gap-2 mt-2 sm:justify-end">
+                          <Button variant="outline" size="sm" disabled={busyId === account.id} onClick={() => sync(account.id)}>
+                            {busyId === account.id ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                            )}
                             Sync
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" disabled={busyId === account.id} onClick={() => unlink(account)}>
                             Unlink
                           </Button>
                         </div>
@@ -157,72 +219,30 @@ export default function BankPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Sync Settings */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Sync Settings</CardTitle>
-              <CardDescription>
-                Configure automatic transaction import
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h4 className="font-medium">Auto-sync</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Automatically import transactions daily
-                  </p>
-                </div>
-                <Button variant="outline" size="sm">
-                  Enable
-                </Button>
-              </div>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h4 className="font-medium">Sync Frequency</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    How often to check for new transactions
-                  </p>
-                </div>
-                <select className="px-3 py-2 border rounded-md dark:bg-gray-800">
-                  <option>Daily</option>
-                  <option>Weekly</option>
-                  <option>Monthly</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
-      {/* Security Notice */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Security Information
+            How your data is handled
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
-            <div className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-              <p>Bank-level 256-bit encryption for all data transfers</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-              <p>Credentials are never stored on our servers</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-              <p>Read-only access - we cannot move your money</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-              <p>You can unlink your account at any time</p>
-            </div>
-          </div>
+          <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+            {[
+              'Bank credentials are entered into Plaid and never reach Aurum',
+              'Access tokens are encrypted at rest (AES-256-GCM)',
+              'Read-only access: Aurum cannot move your money',
+              'You can unlink any account at any time; imported transactions are kept',
+            ].map((line) => (
+              <li key={line} className="flex items-start gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
     </div>

@@ -3,8 +3,8 @@
  * Displays when there is no data to show
  */
 
-import { Card, CardContent } from '@/shared/components/ui/ui/card';
-import { Button } from '@/shared/components/ui/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Plus, FileText, Wallet, TrendingUp, CreditCard } from 'lucide-react';
 
 interface EmptyStateProps {

@@ -3,8 +3,8 @@
  * Fast access to common actions
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/ui/card";
-import { Button } from "@/shared/components/ui/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Plus, ArrowUpRight, ArrowDownRight, Wallet, TrendingUp } from "lucide-react";
 import Link from "next/link";
 

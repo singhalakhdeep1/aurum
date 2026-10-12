@@ -6,42 +6,63 @@ const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/account(.*)",
   "/transaction(.*)",
+  "/budget(.*)",
+  "/bank(.*)",
+  "/crypto(.*)",
+  "/investments(.*)",
+  "/profile(.*)",
+  "/receipt(.*)",
+  "/reports(.*)",
+  "/settings(.*)",
+  "/subscriptions(.*)",
 ]);
 
-// Create Arcjet middleware
-const aj = arcjet({
-  key: process.env.ARCJET_KEY,
-  // characteristics: ["userId"], // Track based on Clerk userId
-  rules: [
-    // Shield protection for content and security
-    shield({
-      mode: "LIVE",
-    }),
-    detectBot({
-      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
-      allow: [
-        "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
-        "GO_HTTP", // For Inngest
-        // See the full list at https://arcjet.com/bot-list
-      ],
-    }),
-  ],
-});
+// Server-to-server callers (Plaid, Clerk, Inngest) are "bots" by definition,
+// so they skip Arcjet and rely on their own signature verification.
+const isMachineRoute = createRouteMatcher([
+  "/api/webhooks(.*)",
+  "/api/inngest(.*)",
+]);
 
-// Create base Clerk middleware
+// Clerk middleware: redirect signed-out users away from protected pages
 const clerk = clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth();
+  const { userId, redirectToSignIn } = await auth();
 
   if (!userId && isProtectedRoute(req)) {
-    const { redirectToSignIn } = await auth();
     return redirectToSignIn();
   }
 
   return NextResponse.next();
 });
 
-// Chain middlewares - ArcJet runs first, then Clerk
-export default createMiddleware(aj, clerk);
+// Arcjet is optional: without ARCJET_KEY (e.g. local development) only Clerk runs.
+let middleware = clerk;
+
+if (process.env.ARCJET_KEY) {
+  const aj = arcjet({
+    key: process.env.ARCJET_KEY,
+    rules: [
+      // Shield protection for content and security
+      shield({
+        mode: "LIVE",
+      }),
+      detectBot({
+        mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
+        allow: [
+          "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
+          "GO_HTTP", // For Inngest
+          // See the full list at https://arcjet.com/bot-list
+        ],
+      }),
+    ],
+  });
+
+  const arcjetThenClerk = createMiddleware(aj, clerk);
+  middleware = (req, event) =>
+    isMachineRoute(req) ? clerk(req, event) : arcjetThenClerk(req, event);
+}
+
+export default middleware;
 
 export const config = {
   matcher: [

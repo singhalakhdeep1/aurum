@@ -37,7 +37,6 @@ export const deleteTransactionsSchema = z.object({
 // Budget Schemas
 export const createBudgetSchema = z.object({
   amount: z.number().positive('Budget amount must be positive'),
-  category: z.string().min(1, 'Category is required'),
 });
 
 export const updateBudgetSchema = createBudgetSchema.partial();
@@ -71,6 +70,7 @@ export const createSubscriptionSchema = z.object({
   nextBillingDate: z.string().or(z.date()),
   category: z.string().min(1, 'Category is required'),
   autoRenew: z.boolean().default(true),
+  status: z.enum(['active', 'paused', 'cancelled', 'expired']).optional(),
   freeTrialEnd: z.string().or(z.date()).optional(),
   logo: z.string().url().optional(),
   website: z.string().url().optional(),
@@ -79,19 +79,17 @@ export const createSubscriptionSchema = z.object({
 
 export const updateSubscriptionSchema = createSubscriptionSchema.partial();
 
-// Crypto Wallet Schemas
+// Crypto Wallet Schemas (watch-only: public addresses only, never private keys)
 export const createWalletSchema = z.object({
   chain: z.enum(['ethereum', 'polygon', 'bsc']),
-  privateKey: z.string().min(1, 'Private key is required'),
+  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid wallet address'),
+  label: z.string().max(100).optional(),
 });
 
 // Plaid Schemas
-export const createPlaidLinkTokenSchema = z.object({
-  userId: z.string().min(1, 'User ID is required'),
-});
-
 export const exchangePlaidPublicTokenSchema = z.object({
   publicToken: z.string().min(1, 'Public token is required'),
+  institutionName: z.string().optional(),
 });
 
 // Notification Schemas
@@ -107,6 +105,6 @@ export const subscribeToPushSchema = z.object({
 
 // Pagination Schema
 export const paginationSchema = z.object({
-  page: z.number().int().positive().default(1),
-  pageSize: z.number().int().positive().max(100).default(10),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(10),
 });

@@ -1,36 +1,22 @@
 #!/bin/bash
+# Quick local setup: install, configure, migrate. See README.md for details.
+set -e
 
-echo "🚀 AI Finance Platform - Quick Setup Script"
-echo "=========================================="
-echo ""
-
-# Check if .env file exists
 if [ ! -f .env ]; then
-    echo "❌ .env file not found!"
-    echo "Please configure your .env file first (see SETUP-GUIDE.md)"
-    exit 1
+  cp .env.example .env
+  echo "Created .env from .env.example. Fill in DATABASE_URL, DIRECT_URL and the Clerk keys, then run this script again."
+  exit 0
 fi
 
-# Check if DATABASE_URL is configured
-if grep -q "postgresql://username:password" .env; then
-    echo "⚠️  DATABASE_URL not configured!"
-    echo "Please add your Neon DB connection string in .env file"
-    echo "See SETUP-GUIDE.md for instructions"
-    exit 1
+if grep -q "user:password@localhost" .env; then
+  echo "DATABASE_URL / DIRECT_URL in .env are still the example values. Update them first."
+  exit 1
 fi
 
-echo "✅ Environment variables found"
-echo ""
+echo "Installing dependencies..."
+npm install
 
-echo "📦 Generating Prisma Client..."
-npx prisma generate
+echo "Applying database migrations..."
+npx prisma migrate deploy
 
-echo ""
-echo "🗄️  Pushing database schema..."
-npx prisma db push
-
-echo ""
-echo "✅ Database setup complete!"
-echo ""
-echo "🎉 You're all set! Run 'npm run dev' to start the server"
-echo "🌐 App will be available at http://localhost:3000"
+echo "Done. Start the app with: npm run dev"

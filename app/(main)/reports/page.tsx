@@ -5,8 +5,8 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/ui/card';
-import { Button } from '@/shared/components/ui/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { BarChart3, TrendingUp, TrendingDown, Download, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -58,6 +58,24 @@ export default function ReportsPage() {
   const totalIncome = monthlyData.reduce((sum, m) => sum + m.income, 0);
   const totalExpenses = monthlyData.reduce((sum, m) => sum + m.expenses, 0);
   const totalSavings = monthlyData.reduce((sum, m) => sum + m.savings, 0);
+  const maxMonthly = Math.max(1, ...monthlyData.flatMap((m) => [m.income, m.expenses]));
+
+  const exportCsv = () => {
+    const rows = [
+      ['Month', 'Income', 'Expenses', 'Savings'],
+      ...monthlyData.map((m) => [m.month, m.income, m.expenses, m.savings]),
+      [],
+      ['Category (this month)', 'Amount', 'Percent'],
+      ...categoryBreakdown.map((c) => [c.category, c.amount, c.percentage]),
+    ];
+    const csv = rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'aurum-report.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
 
@@ -96,11 +114,11 @@ export default function ReportsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <span className="inline-flex items-center rounded-md border px-3 text-sm text-gray-600 dark:text-gray-400">
             <Calendar className="mr-2 h-4 w-4" />
             Last 6 Months
-          </Button>
-          <Button>
+          </span>
+          <Button onClick={exportCsv} disabled={monthlyData.length === 0}>
             <Download className="mr-2 h-4 w-4" />
             Export Report
           </Button>
@@ -178,23 +196,19 @@ export default function ReportsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="font-medium">{data.month}</span>
                     <div className="space-x-4">
-                      <span className="text-green-500">+${data.income}</span>
-                      <span className="text-red-500">-${data.expenses}</span>
-                      <span className="text-blue-500">${data.savings}</span>
+                      <span className="text-green-500">+${data.income.toLocaleString()}</span>
+                      <span className="text-red-500">-${data.expenses.toLocaleString()}</span>
+                      <span className="text-blue-500">{data.savings < 0 ? "-" : ""}${Math.abs(data.savings).toLocaleString()}</span>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="space-y-1">
                     <div
-                      className="bg-green-500 h-4 rounded-l"
-                      style={{ width: `${(data.income / 6000) * 100}%` }}
+                      className="bg-green-500 h-3 rounded"
+                      style={{ width: `${(data.income / maxMonthly) * 100}%` }}
                     />
                     <div
-                      className="bg-red-500 h-4"
-                      style={{ width: `${(data.expenses / 6000) * 100}%` }}
-                    />
-                    <div
-                      className="bg-blue-500 h-4 rounded-r"
-                      style={{ width: `${(data.savings / 6000) * 100}%` }}
+                      className="bg-red-500 h-3 rounded"
+                      style={{ width: `${(data.expenses / maxMonthly) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -242,35 +256,19 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle>Financial Insights</CardTitle>
           <CardDescription>
-            AI-powered recommendations based on your spending patterns
+            Observations drawn from your recent income and spending
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <h4 className="font-medium text-green-800 dark:text-green-200 mb-2">
-                💡 Great job on savings!
-              </h4>
-              <p className="text-sm text-green-700 dark:text-green-300">
-                Your savings rate of {savingsRate.toFixed(1)}% is above the recommended 20%. Keep up the good work!
-              </p>
-            </div>
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">
-                ⚠️ Watch your entertainment spending
-              </h4>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                Your entertainment expenses have increased by 15% compared to last month. Consider setting a budget limit.
-              </p>
-            </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
-                📈 Income trend
-              </h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Your income has been steadily increasing over the past 6 months. This is a positive trend!
-              </p>
-            </div>
+          <div className="space-y-3">
+            {insights.map((insight) => (
+              <div
+                key={insight}
+                className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-sm text-blue-800 dark:text-blue-200"
+              >
+                {insight}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

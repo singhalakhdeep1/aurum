@@ -1,43 +1,34 @@
 /**
- * Authentication Middleware
- * Protects API routes with Clerk authentication
+ * Authentication helpers for API routes (Clerk).
  */
 
-import { auth } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/shared/lib/db/prisma';
 import { UnauthorizedError } from './error-handler';
 
-export async function withAuth(handler: (req: Request, userId: string) => Promise<Response>) {
-  return async (req: Request) => {
-    try {
-      const { userId } = await auth();
-      
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-      
-      return handler(req, userId);
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Authentication failed' },
-        { status: 500 }
-      );
-    }
-  };
-}
+/**
+ * Returns the internal user id for the signed-in Clerk user,
+ * creating the profile on first use.
+ */
+export async function requireAuth(_req?: Request): Promise<string> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) throw new UnauthorizedError();
 
-export async function requireAuth(req: Request): Promise<string> {
-  const { userId } = await auth();
-  
-  if (!userId) {
-    throw new UnauthorizedError();
-  }
+  const existing = await prisma.user.findUnique({ where: { clerkUserId }, select: { id: true } });
+  if (existing) return existing.id;
 
-  const user = await prisma.user.findUnique({ where: { clerkUserId: userId }, select: { id: true } });
-  if (!user) throw new UnauthorizedError('User profile not found');
-  return user.id;
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress;
+  if (!clerkUser || !email) throw new UnauthorizedError('User profile not found');
+
+  const created = await prisma.user.create({
+    data: {
+      clerkUserId,
+      email,
+      name: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || null,
+      imageUrl: clerkUser.imageUrl,
+    },
+    select: { id: true },
+  });
+  return created.id;
 }

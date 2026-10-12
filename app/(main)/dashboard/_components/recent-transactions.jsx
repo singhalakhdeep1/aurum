@@ -3,10 +3,11 @@
  * Displays recent transactions on dashboard
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/ui/table";
-import { Badge } from "@/shared/components/ui/ui/badge";
-import { ArrowUpRight, ArrowDownRight, MoreHorizontal } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import Link from "next/link";
 
 export function RecentTransactions({ transactions }) {

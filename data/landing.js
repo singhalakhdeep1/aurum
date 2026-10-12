@@ -3,27 +3,27 @@ import {
   Receipt,
   PieChart,
   CreditCard,
-  Globe,
+  Landmark,
   Zap,
 } from "lucide-react";
 
 // Stats Data
 export const statsData = [
   {
-    value: "50K+",
-    label: "Active Users",
+    value: "AES-256",
+    label: "Encrypted Bank Tokens",
   },
   {
-    value: "$2B+",
-    label: "Transactions Tracked",
+    value: "Plaid",
+    label: "Secure Bank Linking",
   },
   {
-    value: "99.9%",
-    label: "Uptime",
+    value: "Gemini",
+    label: "AI Receipt Scanning",
   },
   {
-    value: "4.9/5",
-    label: "User Rating",
+    value: "6 mo",
+    label: "Income & Spending Trends",
   },
 ];
 
@@ -52,9 +52,10 @@ export const featuresData = [
     description: "Manage multiple accounts and credit cards in one place",
   },
   {
-    icon: <Globe className="h-8 w-8 text-blue-600" />,
-    title: "Multi-Currency",
-    description: "Support for multiple currencies with real-time conversion",
+    icon: <Landmark className="h-8 w-8 text-blue-600" />,
+    title: "Bank Feeds",
+    description:
+      "Link your bank with Plaid and have new transactions imported automatically",
   },
   {
     icon: <Zap className="h-8 w-8 text-blue-600" />,
@@ -92,7 +93,7 @@ export const testimonialsData = [
     role: "Small Business Owner",
     image: "https://randomuser.me/api/portraits/women/75.jpg",
     quote:
-      "Welth has transformed how I manage my business finances. The AI insights have helped me identify cost-saving opportunities I never knew existed.",
+      "Aurum has transformed how I manage my business finances. The AI insights have helped me identify cost-saving opportunities I never knew existed.",
   },
   {
     name: "Michael Chen",
@@ -106,6 +107,6 @@ export const testimonialsData = [
     role: "Financial Advisor",
     image: "https://randomuser.me/api/portraits/women/74.jpg",
     quote:
-      "I recommend Welth to all my clients. The multi-currency support and detailed analytics make it perfect for international investors.",
+      "I recommend Aurum to all my clients. The detailed analytics and investment tracking make it perfect for anyone building long-term wealth.",
   },
 ];

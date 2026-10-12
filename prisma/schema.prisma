@@ -19,6 +19,11 @@ model User {
   budgets       Budget[]
   investments   Investment[]
   subscriptions Subscription[]
+  settings      UserSettings?
+  bankAccounts  LinkedBankAccount[]
+  receipts      Receipt[]
+  pushSubscriptions PushSubscription[]
+  wallets       WalletAddress[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -49,6 +54,7 @@ model Transaction {
   date             DateTime
   category         String           
   receiptUrl       String?
+  externalId       String?           @unique // e.g. Plaid transaction id, used to de-duplicate bank imports
   isRecurring      Boolean           @default(false)
   recurringInterval RecurringInterval? // Only used if isRecurring is true
   nextRecurringDate DateTime?         // Next date for recurring transaction
@@ -176,4 +182,86 @@ model Subscription {
   @@index([userId])
   @@index([userId, nextBillingDate])
   @@map("subscriptions")
+}
+
+
+model UserSettings {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushNotifications  Boolean  @default(true)
+  emailNotifications Boolean  @default(true)
+  budgetAlerts       Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model Receipt {
+  id          String   @id @default(uuid())
+  merchant    String?
+  amount      Decimal?
+  date        DateTime?
+  category    String?
+  status      String   @default("success") // success | failed
+  error       String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("receipts")
+}
+
+// A bank connection made through Plaid Link. One row per Plaid item (institution login).
+model LinkedBankAccount {
+  id              String    @id @default(uuid())
+  plaidItemId     String
+  plaidAccountId  String
+  accessToken     String // encrypted with BANK_TOKEN_KEY (AES-256-GCM)
+  institutionName String
+  name            String
+  mask            String?
+  subtype         String?
+  balance         Decimal   @default(0)
+  syncCursor      String?
+  lastSyncedAt    DateTime?
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Local account that imported transactions are written to
+  accountId       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, plaidAccountId])
+  @@index([plaidItemId])
+  @@map("linked_bank_accounts")
+}
+
+// Watch-only wallet: only a public address is stored, never key material.
+model WalletAddress {
+  id        String   @id @default(uuid())
+  chain     String
+  address   String
+  label     String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, chain, address])
+  @@map("wallet_addresses")
 }

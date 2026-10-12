@@ -3,9 +3,9 @@
  * Reusable component for tracking budget progress
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/ui/card';
-import { Progress } from '@/shared/components/ui/ui/progress';
-import { Button } from '@/shared/components/ui/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, MoreHorizontal } from 'lucide-react';
 
 interface BudgetTrackerProps {

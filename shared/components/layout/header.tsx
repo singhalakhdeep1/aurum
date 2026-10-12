@@ -1,12 +1,13 @@
 import React from "react";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { PenBox, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { checkUser } from "@/features/auth/lib/checkUser";
+import { checkUser } from "@/lib/checkUser";
 import Image from "next/image";
 import ThemeToggle from "@/shared/components/layout/theme-toggle";
 import NotificationPermission from "@/features/notifications/components/notification-permission";
+import NavMenu from "@/shared/components/layout/nav-menu";
 
 const Header = async () => {
   await checkUser();
@@ -17,7 +18,7 @@ const Header = async () => {
         <Link href="/">
           <Image
             src={"/logo.png"}
-            alt="Welth Logo"
+            alt="Aurum Logo"
             width={200}
             height={60}
             className="h-12 w-auto object-contain"
@@ -61,6 +62,7 @@ const Header = async () => {
                 <span className="hidden md:inline">Add Transaction</span>
               </Button>
             </a>
+            <NavMenu />
           </SignedIn>
           <SignedOut>
             <SignInButton forceRedirectUrl="/dashboard">

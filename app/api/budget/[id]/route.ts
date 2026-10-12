@@ -12,11 +12,11 @@ import { updateBudgetSchema } from '@/shared/lib/validators/schemas';
 // GET /api/budget/[id] - Get budget by ID
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     const budget = await prisma.budget.findFirst({
       where: { id, userId },
@@ -35,11 +35,11 @@ export async function GET(
 // PUT /api/budget/[id] - Update budget
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     
     const validatedData = updateBudgetSchema.parse(body);
@@ -67,11 +67,11 @@ export async function PUT(
 // DELETE /api/budget/[id] - Delete budget
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     // Check if budget exists and belongs to user
     const existingBudget = await prisma.budget.findFirst({

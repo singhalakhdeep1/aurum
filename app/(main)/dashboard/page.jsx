@@ -1,11 +1,10 @@
-import { Suspense } from "react";
-import { getUserAccounts } from "@/features/dashboard/actions/dashboard";
-import { getDashboardData } from "@/features/dashboard/actions/dashboard";
-import { getCurrentBudget } from "@/features/budget/actions/budget";
+import { getUserAccounts } from "@/actions/dashboard";
+import { getDashboardData } from "@/actions/dashboard";
+import { getCurrentBudget } from "@/actions/budget";
 import { AccountCard } from "./_components/account-card";
-import { CreateAccountDrawer } from "@/shared/components/account/create-account-drawer";
+import { CreateAccountDrawer } from "@/components/create-account-drawer";
 import { BudgetProgress } from "./_components/budget-progress";
-import { Card, CardContent } from "@/shared/components/ui/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 import { DashboardOverview } from "./_components/transaction-overview";
 import { QuickActions } from "./_components/quick-actions";

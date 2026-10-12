@@ -1,50 +1,57 @@
+/**
+ * Web push delivery. Subscriptions live in the database; endpoints the push
+ * service reports as gone (404/410) are pruned automatically.
+ */
+
 import webpush from 'web-push';
+import { prisma } from '@/shared/lib/db/prisma';
 
-// Configure VAPID keys (these should be in your .env file)
-const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
-
-if (!publicVapidKey || !privateVapidKey) {
-  console.warn('VAPID keys not configured. Push notifications will not work.');
+export interface PushPayload {
+  title: string;
+  body: string;
+  url?: string;
 }
 
-webpush.setVapidDetails(
-  'mailto:your-email@example.com',
-  publicVapidKey,
-  privateVapidKey
-);
+let configured = false;
 
-/**
- * Send push notification to a subscriber
- */
-export async function sendPushNotification(subscription, data) {
-  try {
-    await webpush.sendNotification(subscription, JSON.stringify(data));
-    return { success: true };
-  } catch (error) {
-    console.error('Push notification error:', error);
-    return { success: false, error: error.message };
-  }
+export function isPushConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 }
 
-/**
- * Send notification to multiple subscribers
- */
-export async function sendBulkPushNotifications(subscriptions, data) {
-  const results = await Promise.allSettled(
-    subscriptions.map(sub => sendPushNotification(sub, data))
+function configure(): void {
+  if (configured) return;
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:support@aurum.app',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!
   );
-  
-  return {
-    total: subscriptions.length,
-    successful: results.filter(r => r.status === 'fulfilled' && r.value.success).length,
-    failed: results.filter(r => r.status === 'rejected' || !r.value.success).length,
-  };
+  configured = true;
 }
 
-/**
- * Generate VAPID keys (run once to get keys)
- */
-export function generateVapidKeys() {
-  return webpush.generateVAPIDKeys();
+/** Sends to every device the user subscribed. Returns how many deliveries succeeded. */
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
+  if (!isPushConfigured()) return 0;
+  configure();
+
+  const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
+  const body = JSON.stringify(payload);
+  let delivered = 0;
+
+  await Promise.all(
+    subscriptions.map(async (s) => {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body);
+        delivered++;
+      } catch (error) {
+        const status = (error as { statusCode?: number }).statusCode;
+        if (status === 404 || status === 410) {
+          await prisma.pushSubscription.delete({ where: { id: s.id } }).catch(() => undefined);
+        } else {
+          console.error('Push delivery failed:', error);
+        }
+      }
+    })
+  );
+
+  return delivered;
 }

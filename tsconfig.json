@@ -23,12 +23,12 @@
       "@/shared/*": ["./shared/*"],
       "@/features/*": ["./features/*"],
       "@/config/*": ["./config/*"],
-      "@/components/*": ["./shared/components/*"],
-      "@/lib/*": ["./shared/lib/*"],
+      "@/components/*": ["./components/*", "./shared/components/*"],
+      "@/lib/*": ["./lib/*", "./shared/lib/*"],
       "@/types/*": ["./shared/types/*"],
-      "@/hooks/*": ["./shared/hooks/*"]
+      "@/hooks/*": ["./hooks/*", "./shared/hooks/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "tests"]
 }

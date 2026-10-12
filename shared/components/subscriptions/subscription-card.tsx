@@ -3,9 +3,9 @@
  * Reusable component for displaying subscription items
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/ui/card';
-import { Button } from '@/shared/components/ui/ui/button';
-import { Badge } from '@/shared/components/ui/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Calendar, MoreHorizontal, AlertCircle } from 'lucide-react';
 
 interface SubscriptionCardProps {

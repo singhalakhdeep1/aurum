@@ -1,7 +1,7 @@
 {
   "name": "Aurum Finance",
   "short_name": "Aurum",
-  "description": "AI-powered finance platform with crypto, DeFi, and payment integration",
+  "description": "AI-assisted personal finance: accounts, budgets, investments, subscriptions and bank feeds",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

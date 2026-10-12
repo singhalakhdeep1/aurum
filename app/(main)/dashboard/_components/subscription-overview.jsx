@@ -3,12 +3,13 @@
  * Displays subscription summary on dashboard
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/ui/card";
-import { Button } from "@/shared/components/ui/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Calendar, AlertCircle, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/prisma";
+import { calculateMonthlyCost } from "@/shared/lib/subscriptions/subscription-manager";
 
 export async function SubscriptionOverview() {
   const { userId: clerkUserId } = await auth();
@@ -30,7 +31,7 @@ export async function SubscriptionOverview() {
     daysUntil: Math.max(0, Math.ceil((subscription.nextBillingDate.getTime() - now.getTime()) / 86_400_000)),
   }));
 
-  const monthlyTotal = normalizedSubscriptions.reduce((sum, sub) => sum + sub.amount, 0);
+  const monthlyTotal = normalizedSubscriptions.reduce((sum, sub) => sum + calculateMonthlyCost(sub), 0);
   const upcomingBills = normalizedSubscriptions.filter(sub => sub.daysUntil <= 7);
 
   return (

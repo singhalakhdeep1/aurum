@@ -6,8 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/shared/lib/db/prisma';
 import { requireAuth } from '@/shared/lib/middleware/auth';
-import { handleApiError, NotFoundError } from '@/shared/lib/middleware/error-handler';
-import { createAccountSchema, updateAccountSchema } from '@/shared/lib/validators/schemas';
+import { handleApiError } from '@/shared/lib/middleware/error-handler';
+import { createAccountSchema } from '@/shared/lib/validators/schemas';
 
 // GET /api/accounts - Get all accounts for authenticated user
 export async function GET(req: NextRequest) {

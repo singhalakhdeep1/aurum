@@ -3,8 +3,8 @@
  * Reusable component for displaying investment portfolio items
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/ui/card';
-import { Button } from '@/shared/components/ui/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, MoreHorizontal } from 'lucide-react';
 
 interface PortfolioCardProps {

@@ -9,8 +9,8 @@ import ServiceWorkerRegister from "@/shared/components/layout/service-worker-reg
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Welth",
-  description: "One stop Finance Platform",
+  title: "Aurum",
+  description: "AI-powered personal finance: accounts, budgets, investments, subscriptions and bank feeds in one place.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <footer className="bg-blue-50 dark:bg-gray-900 py-12">
               <div className="container mx-auto px-4 text-center text-gray-600 dark:text-gray-400">
-                <p>Made with 💗 by RoadsideCoder</p>
+                <p>Aurum &copy; {new Date().getFullYear()}</p>
               </div>
             </footer>
           </body>

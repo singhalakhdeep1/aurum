@@ -1,66 +1,70 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  const output = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+/** Bell button in the header: asks for permission and registers this browser for web push. */
 export default function NotificationPermission() {
-  const [permission, setPermission] = useState('default');
-  const [subscription, setSubscription] = useState(null);
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermission(Notification.permission);
-    }
-  }, []);
-
-  const requestPermission = async () => {
-    if (!('Notification' in window)) {
-      toast.error('This browser does not support notifications');
+    if (!VAPID_PUBLIC_KEY || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPermission('unsupported');
       return;
     }
+    setPermission(Notification.permission);
+  }, []);
 
+  const enable = async () => {
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
-
-      if (result === 'granted') {
-        await subscribeToPush();
-        toast.success('Notifications enabled!');
-      } else {
+      if (result !== 'granted') {
         toast.error('Notification permission denied');
+        return;
       }
-    } catch (error) {
-      toast.error('Failed to request notification permission');
-    }
-  };
 
-  const subscribeToPush = async () => {
-    try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
-      });
+      const subscription =
+        (await registration.pushManager.getSubscription()) ??
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!),
+        }));
 
-      setSubscription(subscription);
-      
-      // Send subscription to your backend
-      await fetch('/api/notifications/subscribe', {
+      const res = await fetch('/api/notifications/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscription),
+        body: JSON.stringify(subscription.toJSON()),
       });
+      if (!res.ok) throw new Error('Failed to save subscription');
+
+      toast.success('Notifications enabled!');
     } catch (error) {
       console.error('Push subscription error:', error);
-      toast.error('Failed to subscribe to push notifications');
+      toast.error('Failed to enable notifications');
     }
   };
+
+  // Push is not configured or not supported in this browser: render nothing
+  if (permission === 'unsupported') return null;
 
   if (permission === 'granted') {
     return (
-      <Button variant="ghost" size="icon">
+      <Button variant="ghost" size="icon" title="Notifications enabled" aria-label="Notifications enabled">
         <Bell className="h-5 w-5 text-green-500" />
       </Button>
     );
@@ -68,28 +72,15 @@ export default function NotificationPermission() {
 
   if (permission === 'denied') {
     return (
-      <Button variant="ghost" size="icon">
+      <Button variant="ghost" size="icon" title="Notifications blocked in browser settings" aria-label="Notifications blocked">
         <BellOff className="h-5 w-5 text-red-500" />
       </Button>
     );
   }
 
   return (
-    <Button variant="ghost" size="icon" onClick={requestPermission}>
+    <Button variant="ghost" size="icon" onClick={enable} title="Enable notifications" aria-label="Enable notifications">
       <Bell className="h-5 w-5" />
     </Button>
   );
-}
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  
-  for (let i = 0; i < rawData.length; i++) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  
-  return outputArray;
 }

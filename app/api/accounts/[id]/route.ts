@@ -12,11 +12,11 @@ import { updateAccountSchema } from '@/shared/lib/validators/schemas';
 // GET /api/accounts/[id] - Get account by ID
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     const account = await prisma.account.findFirst({
       where: { id, userId },
@@ -35,11 +35,11 @@ export async function GET(
 // PUT /api/accounts/[id] - Update account
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     
     const validatedData = updateAccountSchema.parse(body);
@@ -75,11 +75,11 @@ export async function PUT(
 // DELETE /api/accounts/[id] - Delete account
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await requireAuth(req);
-    const { id } = params;
+    const { id } = await params;
     
     // Check if account exists and belongs to user
     const existingAccount = await prisma.account.findFirst({

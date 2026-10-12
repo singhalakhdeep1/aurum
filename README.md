@@ -1,338 +1,158 @@
-# Aurum - AI Finance Platform
+# Aurum
 
-A comprehensive AI-powered finance platform with advanced features including crypto wallet, DeFi integration, payment processing, and business intelligence analytics.
+An AI-assisted personal finance app: track accounts and transactions, set a budget, scan receipts, follow investments and subscriptions, link your bank with Plaid and watch crypto wallet balances, all behind a signed-in dashboard.
 
-## 🚀 Overview
+Built with Next.js 15 (App Router), React 19, Prisma + PostgreSQL, Clerk, and Tailwind / shadcn-ui.
 
-Aurum is a modern financial management platform that combines traditional finance with Web3 capabilities. It offers AI-powered insights, multi-chain crypto wallet support, DeFi protocol integration, payment gateway processing, and advanced business intelligence dashboards.
+## Features
 
-## ✨ Key Features
+| Area | What it does |
+| --- | --- |
+| **Accounts & transactions** | Current / savings accounts with a default account, income and expense transactions, recurring transactions (daily to yearly), search, filter, sort, pagination and bulk delete. Balances stay in sync with every create, edit and delete. |
+| **Dashboard** | Account cards, income vs. expense overview, recent transactions, budget progress and subscription summary. |
+| **AI receipt scanning** | Upload a receipt photo in *Add Transaction*; Google Gemini extracts amount, date, merchant and category to pre-fill the form. Every scan is logged on the *Receipts* page. |
+| **Budget** | One monthly budget with live progress, remaining amount and a per-category breakdown of this month's spending. An Inngest job checks every 6 hours and sends an email and/or push notification at 80% (respecting your notification settings). |
+| **Reports** | Six-month income / expense / savings trend, this month's expense breakdown, rule-based insights, CSV export. A monthly AI-written report is emailed on the 1st. |
+| **Investments** | Add holdings, update prices by hand (no market-data feed is connected), see gain/loss and allocation. |
+| **Subscriptions** | Track recurring payments, monthly and yearly cost, upcoming renewals; pause, resume, cancel or delete. |
+| **Bank feeds (Plaid)** | Link a bank with Plaid Link. Each bank account becomes a local account and transactions are imported with cursor-based sync, de-duplicated, and kept current by Plaid webhooks. Access tokens are encrypted at rest (AES-256-GCM). |
+| **Crypto wallets** | Watch-only: save public Ethereum / Polygon / BNB Smart Chain addresses and see native-token balances. No private keys are ever accepted or stored. |
+| **Profile** | XP, level and achievements computed from your real activity. |
+| **Settings** | Email / push / budget-alert preferences (saved server-side and honoured by the background jobs) and light / dark / system theme. |
+| **Push notifications** | Web push via a service worker (bell icon in the header). |
 
-### Core Financial Management
-- **AI-Powered Insights**: Get personalized financial advice using Google Gemini AI
-- **Transaction Tracking**: Comprehensive income and expense management
-- **Budget Management**: Set and track budgets with smart alerts
-- **Account Management**: Multiple account types (Current, Savings)
-- **Recurring Transactions**: Automated recurring payment processing
-- **Real-time Notifications**: Email alerts via Resend
+### Not included
 
-### Crypto & Web3
-- **Multi-Chain Wallet**: Support for Ethereum, Polygon, and BSC
-- **Non-Custodial Wallet**: Secure wallet creation and management
-- **Token Management**: ERC-20 token balance tracking
-- **Transaction History**: Complete crypto transaction records
-- **Gas Fee Estimation**: Real-time gas fee calculations
-- **WalletConnect Integration**: Connect with popular wallets
+Multi-language and multi-currency support, biometric (WebAuthn) login, DeFi / token swaps, and in-app payment methods are **not** implemented. `/api/billing` exposes Stripe Checkout sessions for a future plans page but has no UI yet.
 
-### DeFi Integration
-- **DEX Integration**: Uniswap token swapping
-- **Liquidity Management**: Pool management and tracking
-- **Yield Farming**: High-yield protocol integration
-- **Staking**: ETH and token staking support
-- **APY Tracking**: Real-time yield monitoring
-- **Risk Assessment**: Protocol risk evaluation
+## Tech stack
 
-### Payment Processing
-- **Stripe Integration**: Credit/debit card processing
-- **Subscription Management**: Recurring billing
-- **Invoice Generation**: Automated invoice creation
-- **Multi-Currency Support**: International payment support
-- **Payment History**: Complete transaction records
+- **Frontend:** Next.js 15, React 19, Tailwind CSS, shadcn/ui (Radix), Recharts, React Hook Form + Zod
+- **Backend:** Next.js server actions and REST route handlers, Prisma 6, PostgreSQL
+- **Auth:** Clerk (users are mirrored into the database on first sign-in and via a Svix-verified webhook)
+- **Background jobs:** Inngest (recurring transactions, budget alerts, monthly reports)
+- **Integrations:** Google Gemini, Resend + React Email, Plaid, viem, web-push, Arcjet (optional), Stripe (API only)
 
-### Business Intelligence
-- **Financial Dashboards**: Real-time performance metrics
-- **Data Visualization**: Interactive charts with Recharts
-- **Custom Reports**: Exportable financial reports
-- **Trend Analysis**: Spending pattern analysis
-- **Forecasting**: Predictive financial analytics
-- **Anomaly Detection**: Unusual activity alerts
+## Getting started
 
-### 🆕 Premium Features
+### Prerequisites
 
-#### User Experience
-- **Dark/Light Mode**: Theme switching with system preference detection
-- **Push Notifications**: Real-time alerts for transactions, budget limits, and updates
-- **Progressive Web App (PWA)**: Install on desktop and mobile devices
-- **Multi-language Support**: 10+ languages (English, Spanish, French, German, Chinese, Japanese, Korean, Hindi, Arabic, Portuguese)
+- Node.js 20+
+- A PostgreSQL database (local, Neon, Supabase, ...)
+- A [Clerk](https://clerk.com) application
+- Optional, per feature: Gemini, Resend, Plaid, Arcjet and Stripe keys (see `.env.example`)
 
-#### Security
-- **Biometric Authentication**: WebAuthn support for fingerprint, Face ID, and other biometric methods
-- **Two-Factor Authentication**: Enhanced security with 2FA support
-
-#### Banking Integration
-- **Plaid Integration**: Connect 10,000+ banks worldwide for automatic transaction syncing
-- **Real-time Bank Feeds**: Automatic account balance and transaction updates
-- **Bank Account Management**: Link and manage multiple bank accounts
-
-#### Smart Features
-- **Receipt Scanning (OCR)**: Scan receipts to auto-add expenses using Tesseract.js
-- **Subscription Management**: Track, analyze, and manage recurring subscriptions
-- **Smart Insights**: AI-powered recommendations for subscription optimization
-- **Investment Portfolio Tracking**: Monitor stocks, ETFs, mutual funds, and crypto investments
-- **Performance Analytics**: Track investment performance with detailed metrics
-
-#### Social & Gamification
-- **Achievements System**: Unlock badges for financial milestones
-- **Leaderboards**: Compare progress with other users
-- **Daily Challenges**: Complete daily financial tasks for rewards
-- **Social Sharing**: Share achievements and progress on social media
-- **Leveling System**: Earn XP and level up through financial activities
-
-## 🛠 Tech Stack
-
-### Frontend
-- **Framework**: Next.js 15 (App Router, Turbopack)
-- **UI Library**: React 19
-- **Styling**: Tailwind CSS
-- **Components**: shadcn/ui (Radix UI)
-- **Charts**: Recharts
-- **Forms**: React Hook Form + Zod
-- **Date Handling**: date-fns + react-day-picker
-- **Icons**: Lucide React
-
-### Backend
-- **Database**: PostgreSQL (via Neon DB)
-- **ORM**: Prisma
-- **Authentication**: Clerk
-- **AI**: Google Gemini AI
-- **Email**: Resend + React Email
-- **Background Jobs**: Inngest
-- **Security**: ArcJet (Rate limiting, bot protection)
-
-### Web3 & Payments
-- **Blockchain**: viem (Ethereum, Polygon, BSC)
-- **Payments**: Stripe
-- **WalletConnect**: Multi-wallet support
-
-## 📋 Prerequisites
-
-- Node.js 18+ 
-- PostgreSQL database (Neon DB recommended)
-- Clerk account (for authentication)
-- Google AI Studio account (for Gemini AI)
-- Resend account (for emails)
-- ArcJet account (optional, for security)
-
-## 🔧 Installation
-
-### 1. Clone the Repository
+### Setup
 
 ```bash
-git clone https://github.com/Alakhdeepsingh/aurum.git
+git clone https://github.com/singhalakhdeep1/aurum.git
 cd aurum
-```
-
-### 2. Install Dependencies
-
-```bash
 npm install
-```
-
-### 3. Configure Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
-# Database
-DATABASE_URL=postgresql://username:password@host/database?sslmode=require
-DIRECT_URL=postgresql://username:password@host/database?sslmode=require
-
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/onboarding
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
-
-# AI Integration
-GEMINI_API_KEY=your_gemini_api_key
-
-# Email Service
-RESEND_API_KEY=your_resend_api_key
-
-# Security (Optional for development)
-ARCJET_KEY=your_arcjet_key
-
-# Payment Gateways
-STRIPE_SECRET_KEY=your_stripe_secret_key
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-PAYPAL_CLIENT_ID=your_paypal_client_id
-PAYPAL_CLIENT_SECRET=your_paypal_secret
-SQUARE_ACCESS_TOKEN=your_square_access_token
-
-# Crypto & Web3
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
-INFURA_PROJECT_ID=your_infura_project_id
-ALCHEMY_API_KEY=your_alchemy_api_key
-RPC_URL=https://eth.llamarpc.com
-
-# DeFi Protocols
-UNISWAP_V3_SUBGRAPH_URL=your_uniswap_subgraph_url
-AAVE_SUBGRAPH_URL=your_aave_subgraph_url
-
-# Analytics (Optional)
-NEXT_PUBLIC_MIXPANEL_TOKEN=your_mixpanel_token
-AMPLITUDE_API_KEY=your_amplitude_api_key
-
-# Push Notifications
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=your_vapid_public_key
-VAPID_PRIVATE_KEY=your_vapid_private_key
-
-# Plaid Bank Integration
-PLAID_CLIENT_ID=your_plaid_client_id
-PLAID_SECRET=your_plaid_secret
-PLAID_ENV=sandbox
-```
-
-### 4. Setup Database
-
-```bash
-# Generate Prisma Client
-npx prisma generate
-
-# Push schema to database
-npx prisma db push
-
-# (Optional) Seed database with sample data
-npm run seed
-```
-
-### 5. Run Development Server
-
-```bash
+cp .env.example .env     # then fill in the values
+npx prisma migrate deploy
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open <http://localhost:3000>.
 
-## 📁 Project Structure
+A feature whose keys are missing is simply unavailable (for example, bank linking returns "not configured"); the rest of the app still works. Only the database and Clerk variables are required.
 
-```
-aurum/
-├── app/                      # Next.js App Router
-│   ├── (auth)/              # Auth route group
-│   ├── (dashboard)/         # Dashboard route group
-│   ├── (public)/            # Public route group
-│   ├── api/                 # API routes
-│   ├── layout.tsx           # Root layout
-│   └── globals.css          # Global styles
-├── features/                # Feature-based modules
-│   ├── auth/                # Authentication feature
-│   ├── accounts/            # Account management
-│   ├── transactions/        # Transaction management
-│   ├── budget/              # Budget management
-│   ├── investments/         # Investment tracking
-│   ├── crypto/              # Crypto wallet
-│   ├── subscriptions/       # Subscription management
-│   └── notifications/       # Push notifications
-├── shared/                  # Shared utilities
-│   ├── components/          # Reusable components
-│   │   ├── ui/             # shadcn/ui components
-│   │   └── layout/         # Layout components
-│   ├── hooks/               # Custom React hooks
-│   ├── lib/                 # Utility libraries
-│   │   ├── db/              # Database utilities
-│   │   ├── utils/           # General utilities
-│   │   └── validators/      # Validation schemas
-│   └── types/               # TypeScript types
-├── config/                  # Configuration files
-│   ├── env.ts               # Environment variables
-│   ├── constants.ts         # App constants
-│   └── db.ts                # Database config
-├── prisma/                  # Database schema
-└── public/                  # Static assets
-```
+### Background jobs (Inngest)
 
-## 🗄 Database Schema
-
-The platform uses PostgreSQL with the following main models:
-
-- **User**: User accounts linked to Clerk authentication
-- **Account**: Bank accounts (Current, Savings)
-- **Transaction**: Income and expense records
-- **Budget**: Monthly budget tracking
-
-## 🔐 Security Features
-
-- **Authentication**: Clerk-based secure authentication
-- **Rate Limiting**: ArcJet for API protection
-- **Bot Protection**: Automated bot detection
-- **Secure Headers**: Next.js security headers
-- **Environment Variables**: Sensitive data in .env
-- **SQL Injection Prevention**: Prisma ORM parameterized queries
-
-## 📊 Available Scripts
+Recurring transactions, budget alerts and monthly reports run as Inngest functions served at `/api/inngest`. In development run the Inngest dev server alongside the app:
 
 ```bash
-npm run dev          # Start development server with Turbopack
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run email        # Start email development server
-npm run postinstall  # Generate Prisma client (auto-run after install)
+npx inngest-cli@latest dev -u http://localhost:3000/api/inngest
 ```
 
-## 🌐 Deployment
+In production, connect the app to Inngest Cloud and set `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY`.
 
-### Vercel (Recommended)
+### Webhooks
 
-1. Push code to GitHub
-2. Import project in Vercel
-3. Add environment variables
-4. Deploy
+| Endpoint | Purpose | Verification |
+| --- | --- | --- |
+| `/api/webhooks/clerk` | Mirror user create / update / delete into the database | Svix signature (`CLERK_WEBHOOK_SECRET`) |
+| `/api/webhooks/plaid` | Import new bank transactions as Plaid reports them | Plaid JWT + body hash |
 
-### Environment Variables for Production
+Both must be publicly reachable over HTTPS; use a tunnel such as ngrok for local testing.
 
-Make sure to add all environment variables from the `.env` file to your deployment platform.
+### Plaid sandbox
 
-## 🧪 Testing
+Set `PLAID_ENV=sandbox` and generate `BANK_TOKEN_KEY` (see `.env.example`). In Plaid Link choose any institution and sign in with `user_good` / `pass_good`.
 
-The project includes comprehensive testing setup. Run tests with:
+### Docker
 
 ```bash
-npm run test
+cp .env.example .env     # fill in the values
+docker compose up --build
 ```
 
-## 🤝 Contributing
+This starts the app on port 3000 with a PostgreSQL 16 container and applies migrations on start.
 
-Contributions are welcome! Please follow these steps:
+## Scripts
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```bash
+npm run dev          # development server (Turbopack)
+npm run build        # production build
+npm run start        # run the production build
+npm run lint         # ESLint
+npm run typecheck    # TypeScript, no emit
+npm run email        # React Email preview server
+```
 
-## 📝 License
+## Project layout
 
-Proprietary - All rights reserved.
+```
+app/                 Next.js routes
+  (auth)/            sign-in / sign-up
+  (main)/            signed-in pages (dashboard, account, transaction, budget, reports,
+                     investments, subscriptions, receipt, bank, crypto, profile, settings)
+  api/               REST handlers (accounts, transactions, budget, investments, subscriptions,
+                     bank, crypto, reports, receipts, user, notifications, webhooks, inngest)
+actions/             Server actions used by the dashboard / account / transaction pages
+components/          shadcn/ui primitives and shared page components
+shared/lib/          Plaid, crypto, notifications, validators, middleware, profile stats
+features/            Notification bell and investment dashboard components
+lib/                 Prisma client, Inngest functions, Arcjet, Clerk user sync
+emails/              React Email templates
+prisma/              Schema and migrations
+public/              Static assets, PWA manifest and the push service worker
+```
 
-## 👤 Author
+## REST API
 
-**Alakhdeep Singh**
+All endpoints require a signed-in session and only ever return the caller's own data.
 
-## 🙏 Acknowledgments
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET, POST | `/api/accounts` | paginated list / create |
+| GET, PUT, DELETE | `/api/accounts/[id]` | |
+| GET, POST | `/api/transactions` | filters: `accountId`, `type`, `category`, `startDate`, `endDate`, `page`, `pageSize` |
+| GET, PUT, DELETE | `/api/transactions/[id]` | balance is adjusted automatically |
+| POST | `/api/transactions/bulk-delete` | `{ transactionIds: [...] }` |
+| GET, POST | `/api/budget` | GET returns budget, spend this month and category breakdown |
+| GET, POST | `/api/investments` | |
+| GET, PUT, DELETE | `/api/investments/[id]` | |
+| GET, POST | `/api/subscriptions` | |
+| GET, PUT, DELETE | `/api/subscriptions/[id]` | |
+| POST | `/api/subscriptions/[id]/cancel` | |
+| GET | `/api/reports` | six-month trend, category breakdown, insights |
+| GET | `/api/receipts` | receipt scan history |
+| GET, PUT | `/api/user/profile`, `/api/user/settings` | |
+| POST | `/api/bank/link-token`, `/api/bank/exchange`, `/api/bank/sync` | Plaid Link flow and manual sync |
+| GET, DELETE | `/api/bank/accounts`, `/api/bank/accounts/[id]` | |
+| GET, POST, DELETE | `/api/crypto/wallet`, `/api/crypto/wallet/[id]` | watch-only |
+| POST, DELETE | `/api/notifications/subscribe` | register / remove a push subscription |
+| POST, GET, DELETE | `/api/billing` | Stripe Checkout session, current plan, cancel at period end |
 
-- Built with [Next.js](https://nextjs.org/)
-- UI components from [shadcn/ui](https://ui.shadcn.com/)
-- Authentication by [Clerk](https://clerk.com/)
-- AI powered by [Google Gemini](https://ai.google.dev/)
-- Database hosted on [Neon](https://neon.tech/)
+## Security notes
 
-## 📞 Support
+- Every route handler and server action checks the Clerk session; data access is always scoped to the signed-in user.
+- Plaid access tokens are encrypted with `BANK_TOKEN_KEY` before they reach the database.
+- Webhooks reject unsigned requests; Arcjet bot protection (when enabled) exempts them so signed provider calls still arrive.
+- The service worker handles push only and never caches pages or API responses.
+- `/api/seed` (demo data) is disabled when `NODE_ENV=production`.
 
-For support, email support@aurum.com or open an issue in the repository.
+## License
 
-## 🔮 Roadmap
-
-- [ ] Mobile app (React Native)
-- [ ] Advanced AI predictions
-- [ ] More DeFi protocols
-- [ ] NFT marketplace integration
-- [ ] Multi-language support
-- [ ] Advanced analytics with ML
-
----
-
-**Status**: ✅ Production Ready
+Proprietary. All rights reserved.

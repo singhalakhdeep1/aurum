@@ -1,10 +1,8 @@
 "use server";
 
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/prisma";
 import { subDays } from "date-fns";
-
-const ACCOUNT_ID = "account-id";
-const USER_ID = "user-id";
 
 // Categories with their typical amount ranges
 const CATEGORIES = {
@@ -41,8 +39,28 @@ function getRandomCategory(type) {
   return { category: category.name, amount };
 }
 
+// Development helper: replaces the signed-in user's default account history
+// with 90 days of random demo transactions. Disabled in production.
 export async function seedTransactions() {
   try {
+    if (process.env.NODE_ENV === "production") {
+      return { success: false, error: "Seeding is disabled in production" };
+    }
+
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) return { success: false, error: "Unauthorized" };
+
+    const user = await db.user.findUnique({ where: { clerkUserId } });
+    if (!user) return { success: false, error: "User not found" };
+
+    const account =
+      (await db.account.findFirst({ where: { userId: user.id, isDefault: true } })) ??
+      (await db.account.findFirst({ where: { userId: user.id } }));
+    if (!account) return { success: false, error: "Create an account first" };
+
+    const ACCOUNT_ID = account.id;
+    const USER_ID = user.id;
+
     // Generate 90 days of transactions
     const transactions = [];
     let totalBalance = 0;
